@@ -1,0 +1,8 @@
+{
+  "name": "Remix TaskFlow",
+  "description": "Organise, prioritise, and track your daily tasks effortlessly to stay focused and achieve your goals faster.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
