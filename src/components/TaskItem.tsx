@@ -21,8 +21,7 @@ interface TaskItemProps {
   onToggleComplete: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
-  onDragStart: (id: string) => void;
-  onDrop: (id: string) => void;
+  onDrop: (targetId: string, draggedId: string) => void;
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({
@@ -30,7 +29,6 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onToggleComplete,
   onDeleteTask,
   onUpdateTask,
-  onDragStart,
   onDrop,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -83,15 +81,19 @@ export const TaskItem: React.FC<TaskItemProps> = ({
     <motion.div
       layout
       draggable={!isEditing}
-      onDragStart={() => {
+      onDragStart={(event) => {
         setIsDragging(true);
-        onDragStart(task.id);
+        const dragEvent = event as unknown as DragEvent;
+        dragEvent.dataTransfer.effectAllowed = "move";
+        dragEvent.dataTransfer.setData("text/plain", task.id);
       }}
       onDragEnd={() => setIsDragging(false)}
+      onDragEnter={(event) => event.preventDefault()}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
-        onDrop(task.id);
+        const draggedTaskId = event.dataTransfer.getData("text/plain");
+        if (draggedTaskId) onDrop(task.id, draggedTaskId);
       }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}

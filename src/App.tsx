@@ -40,7 +40,6 @@ export default function App() {
     "all",
   );
   const [sortOption, setSortOption] = useState<SortOption>("createdAt");
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   // Save tasks to localStorage on updates
   useEffect(() => {
@@ -113,11 +112,8 @@ export default function App() {
     setTasks((prev) => prev.filter((task) => !task.completed));
   };
 
-  const handleDropTask = (targetTaskId: string) => {
-    if (!draggedTaskId || draggedTaskId === targetTaskId) {
-      setDraggedTaskId(null);
-      return;
-    }
+  const handleDropTask = (targetTaskId: string, draggedTaskId: string) => {
+    if (draggedTaskId === targetTaskId) return;
 
     setTasks((prev) => {
       const draggedIndex = prev.findIndex((task) => task.id === draggedTaskId);
@@ -129,11 +125,12 @@ export default function App() {
       const nextTargetIndex = nextTasks.findIndex(
         (task) => task.id === targetTaskId,
       );
-      nextTasks.splice(nextTargetIndex, 0, draggedTask);
+      const insertionIndex =
+        draggedIndex < targetIndex ? nextTargetIndex + 1 : nextTargetIndex;
+      nextTasks.splice(insertionIndex, 0, draggedTask);
       return nextTasks;
     });
     setSortOption("manual");
-    setDraggedTaskId(null);
   };
 
   const handleResetFilters = () => {
@@ -282,7 +279,6 @@ export default function App() {
                   onToggleComplete={handleToggleComplete}
                   onDeleteTask={handleDeleteTask}
                   onUpdateTask={handleUpdateTask}
-                  onDragStart={setDraggedTaskId}
                   onDrop={handleDropTask}
                 />
               ))
