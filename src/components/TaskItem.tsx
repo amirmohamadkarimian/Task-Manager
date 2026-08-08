@@ -1,14 +1,28 @@
-import React, { useState } from 'react';
-import { Task, Priority, TaskCategory } from '../types';
-import { formatDueDateLabel, isOverdue } from '../utils/storage';
-import { Check, Trash2, Edit2, Calendar, Tag, AlertCircle, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState } from "react";
+import { Task, Priority, TaskCategory } from "../types";
+import { formatDueDateLabel, isOverdue } from "../utils/storage";
+import {
+  Check,
+  Trash2,
+  Edit2,
+  Calendar,
+  Tag,
+  AlertCircle,
+  Save,
+  X,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+} from "lucide-react";
+import { motion } from "motion/react";
 
 interface TaskItemProps {
   task: Task;
   onToggleComplete: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTask: (id: string, updates: Partial<Task>) => void;
+  onDragStart: (id: string) => void;
+  onDrop: (id: string) => void;
 }
 
 export const TaskItem: React.FC<TaskItemProps> = ({
@@ -16,16 +30,21 @@ export const TaskItem: React.FC<TaskItemProps> = ({
   onToggleComplete,
   onDeleteTask,
   onUpdateTask,
+  onDragStart,
+  onDrop,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Edit form states
   const [editTitle, setEditTitle] = useState(task.title);
-  const [editDescription, setEditDescription] = useState(task.description || '');
+  const [editDescription, setEditDescription] = useState(
+    task.description || "",
+  );
   const [editPriority, setEditPriority] = useState<Priority>(task.priority);
   const [editCategory, setEditCategory] = useState<TaskCategory>(task.category);
-  const [editDueDate, setEditDueDate] = useState(task.dueDate || '');
+  const [editDueDate, setEditDueDate] = useState(task.dueDate || "");
 
   const dueDateInfo = formatDueDateLabel(task.dueDate);
   const overdue = isOverdue(task.dueDate, task.completed);
@@ -46,33 +65,46 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
   const handleCancelEdit = () => {
     setEditTitle(task.title);
-    setEditDescription(task.description || '');
+    setEditDescription(task.description || "");
     setEditPriority(task.priority);
     setEditCategory(task.category);
-    setEditDueDate(task.dueDate || '');
+    setEditDueDate(task.dueDate || "");
     setIsEditing(false);
   };
 
   // Priority color styles
   const priorityBadgeStyle: Record<Priority, string> = {
-    high: 'bg-rose-50 text-rose-700 border-rose-200',
-    medium: 'bg-amber-50 text-amber-800 border-amber-200',
-    low: 'bg-slate-100 text-slate-700 border-slate-200',
+    high: "bg-rose-50 text-rose-700 border-rose-200",
+    medium: "bg-amber-50 text-amber-800 border-amber-200",
+    low: "bg-slate-100 text-slate-700 border-slate-200",
   };
 
   return (
     <motion.div
       layout
+      draggable={!isEditing}
+      onDragStart={() => {
+        setIsDragging(true);
+        onDragStart(task.id);
+      }}
+      onDragEnd={() => setIsDragging(false)}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop(task.id);
+      }}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className={`group bg-white border rounded-2xl p-4 transition-all shadow-2xs hover:shadow-xs ${
+      className={`group bg-white border rounded-2xl p-4 transition-all shadow-2xs hover:shadow-xs cursor-grab active:cursor-grabbing ${
+        isDragging ? "opacity-50" : ""
+      } ${
         task.completed
-          ? 'border-slate-200/60 bg-slate-50/50'
+          ? "border-slate-200/60 bg-slate-50/50"
           : overdue
-          ? 'border-rose-200 bg-rose-50/10'
-          : 'border-slate-200/90 hover:border-slate-300'
+            ? "border-rose-200 bg-rose-50/10"
+            : "border-slate-200/90 hover:border-slate-300"
       }`}
     >
       {isEditing ? (
@@ -102,7 +134,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
             {/* Priority Select */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-1">Priority</label>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                Priority
+              </label>
               <select
                 value={editPriority}
                 onChange={(e) => setEditPriority(e.target.value as Priority)}
@@ -116,10 +150,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
             {/* Category Select */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-1">Category</label>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                Category
+              </label>
               <select
                 value={editCategory}
-                onChange={(e) => setEditCategory(e.target.value as TaskCategory)}
+                onChange={(e) =>
+                  setEditCategory(e.target.value as TaskCategory)
+                }
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-1.5 font-medium text-slate-800 capitalize"
               >
                 <option value="work">Work</option>
@@ -133,7 +171,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
 
             {/* Due Date Input */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 mb-1">Due Date</label>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1">
+                Due Date
+              </label>
               <input
                 type="date"
                 value={editDueDate}
@@ -167,16 +207,24 @@ export const TaskItem: React.FC<TaskItemProps> = ({
         /* Normal Task Display */
         <div>
           <div className="flex items-start gap-3">
+            <div
+              className="mt-0.5 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0"
+              title="Drag to reorder"
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="w-4 h-5" />
+            </div>
+
             {/* Custom Checkbox */}
             <button
               type="button"
               onClick={() => onToggleComplete(task.id)}
               className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                 task.completed
-                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
-                  : 'border-slate-300 hover:border-slate-500 bg-white'
+                  ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs"
+                  : "border-slate-300 hover:border-slate-500 bg-white"
               }`}
-              title={task.completed ? 'Mark incomplete' : 'Mark completed'}
+              title={task.completed ? "Mark incomplete" : "Mark completed"}
             >
               {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
             </button>
@@ -187,7 +235,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                 <h3
                   onClick={() => onToggleComplete(task.id)}
                   className={`text-sm font-semibold transition-all cursor-pointer leading-snug ${
-                    task.completed ? 'line-through text-slate-400' : 'text-slate-900 hover:text-slate-700'
+                    task.completed
+                      ? "line-through text-slate-400"
+                      : "text-slate-900 hover:text-slate-700"
                   }`}
                 >
                   {task.title}
@@ -234,12 +284,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                   <span
                     className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border ${
                       task.completed
-                        ? 'bg-slate-100 text-slate-400 border-slate-200'
+                        ? "bg-slate-100 text-slate-400 border-slate-200"
                         : overdue
-                        ? 'bg-rose-50 text-rose-700 border-rose-200 font-semibold'
-                        : dueDateInfo.isToday
-                        ? 'bg-amber-50 text-amber-800 border-amber-200 font-semibold'
-                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                          ? "bg-rose-50 text-rose-700 border-rose-200 font-semibold"
+                          : dueDateInfo.isToday
+                            ? "bg-amber-50 text-amber-800 border-amber-200 font-semibold"
+                            : "bg-slate-50 text-slate-600 border-slate-200"
                     }`}
                   >
                     <Calendar className="w-3 h-3 shrink-0" />
@@ -253,8 +303,12 @@ export const TaskItem: React.FC<TaskItemProps> = ({
                     onClick={() => setShowNotes(!showNotes)}
                     className="inline-flex items-center gap-0.5 text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors ml-auto cursor-pointer"
                   >
-                    <span>{showNotes ? 'Hide notes' : 'View notes'}</span>
-                    {showNotes ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    <span>{showNotes ? "Hide notes" : "View notes"}</span>
+                    {showNotes ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    )}
                   </button>
                 )}
               </div>

@@ -1,22 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Task, FilterStatus, SortOption, TaskCategory, Priority, TaskStats } from './types';
-import { loadTasks, saveTasks, isOverdue, PRIORITY_WEIGHT } from './utils/storage';
-import { TaskStatsBar } from './components/TaskStatsBar';
-import { TaskInput } from './components/TaskInput';
-import { TaskFilters } from './components/TaskFilters';
-import { TaskItem } from './components/TaskItem';
-import { CheckSquare, ListTodo, Sparkles, Plus, Layers, AlertCircle } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Task,
+  FilterStatus,
+  SortOption,
+  TaskCategory,
+  Priority,
+  TaskStats,
+} from "./types";
+import {
+  loadTasks,
+  saveTasks,
+  isOverdue,
+  PRIORITY_WEIGHT,
+} from "./utils/storage";
+import { TaskStatsBar } from "./components/TaskStatsBar";
+import { TaskInput } from "./components/TaskInput";
+import { TaskFilters } from "./components/TaskFilters";
+import { TaskItem } from "./components/TaskItem";
+import {
+  CheckSquare,
+  ListTodo,
+  Sparkles,
+  Plus,
+  Layers,
+  AlertCircle,
+} from "lucide-react";
+import { AnimatePresence } from "motion/react";
 
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
 
   // Search & Filter States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
-  const [priorityFilter, setPriorityFilter] = useState<Priority | 'all' | 'overdue'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | 'all'>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('createdAt');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
+  const [priorityFilter, setPriorityFilter] = useState<
+    Priority | "all" | "overdue"
+  >("all");
+  const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "all">(
+    "all",
+  );
+  const [sortOption, setSortOption] = useState<SortOption>("createdAt");
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   // Save tasks to localStorage on updates
   useEffect(() => {
@@ -28,8 +52,12 @@ export default function App() {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.completed).length;
     const active = total - completed;
-    const overdue = tasks.filter((t) => isOverdue(t.dueDate, t.completed)).length;
-    const highPriority = tasks.filter((t) => !t.completed && t.priority === 'high').length;
+    const overdue = tasks.filter((t) =>
+      isOverdue(t.dueDate, t.completed),
+    ).length;
+    const highPriority = tasks.filter(
+      (t) => !t.completed && t.priority === "high",
+    ).length;
 
     return { total, completed, active, overdue, highPriority };
   }, [tasks]);
@@ -67,7 +95,7 @@ export default function App() {
           };
         }
         return task;
-      })
+      }),
     );
   };
 
@@ -77,7 +105,7 @@ export default function App() {
 
   const handleUpdateTask = (id: string, updates: Partial<Task>) => {
     setTasks((prev) =>
-      prev.map((task) => (task.id === id ? { ...task, ...updates } : task))
+      prev.map((task) => (task.id === id ? { ...task, ...updates } : task)),
     );
   };
 
@@ -85,21 +113,44 @@ export default function App() {
     setTasks((prev) => prev.filter((task) => !task.completed));
   };
 
+  const handleDropTask = (targetTaskId: string) => {
+    if (!draggedTaskId || draggedTaskId === targetTaskId) {
+      setDraggedTaskId(null);
+      return;
+    }
+
+    setTasks((prev) => {
+      const draggedIndex = prev.findIndex((task) => task.id === draggedTaskId);
+      const targetIndex = prev.findIndex((task) => task.id === targetTaskId);
+      if (draggedIndex === -1 || targetIndex === -1) return prev;
+
+      const nextTasks = [...prev];
+      const [draggedTask] = nextTasks.splice(draggedIndex, 1);
+      const nextTargetIndex = nextTasks.findIndex(
+        (task) => task.id === targetTaskId,
+      );
+      nextTasks.splice(nextTargetIndex, 0, draggedTask);
+      return nextTasks;
+    });
+    setSortOption("manual");
+    setDraggedTaskId(null);
+  };
+
   const handleResetFilters = () => {
-    setSearchQuery('');
-    setStatusFilter('all');
-    setPriorityFilter('all');
-    setCategoryFilter('all');
-    setSortOption('createdAt');
+    setSearchQuery("");
+    setStatusFilter("all");
+    setPriorityFilter("all");
+    setCategoryFilter("all");
+    setSortOption("createdAt");
   };
 
   // Count active filter conditions
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (searchQuery.trim()) count++;
-    if (statusFilter !== 'all') count++;
-    if (priorityFilter !== 'all') count++;
-    if (categoryFilter !== 'all') count++;
+    if (statusFilter !== "all") count++;
+    if (priorityFilter !== "all") count++;
+    if (categoryFilter !== "all") count++;
     return count;
   }, [searchQuery, statusFilter, priorityFilter, categoryFilter]);
 
@@ -111,49 +162,62 @@ export default function App() {
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           const matchesTitle = task.title.toLowerCase().includes(q);
-          const matchesDesc = task.description?.toLowerCase().includes(q) || false;
+          const matchesDesc =
+            task.description?.toLowerCase().includes(q) || false;
           if (!matchesTitle && !matchesDesc) return false;
         }
 
         // Status filter
-        if (statusFilter === 'active' && task.completed) return false;
-        if (statusFilter === 'completed' && !task.completed) return false;
+        if (statusFilter === "active" && task.completed) return false;
+        if (statusFilter === "completed" && !task.completed) return false;
 
         // Priority / Special filter
-        if (priorityFilter === 'overdue') {
+        if (priorityFilter === "overdue") {
           if (!isOverdue(task.dueDate, task.completed)) return false;
-        } else if (priorityFilter !== 'all') {
+        } else if (priorityFilter !== "all") {
           if (task.priority !== priorityFilter) return false;
         }
 
         // Category filter
-        if (categoryFilter !== 'all' && task.category !== categoryFilter) return false;
+        if (categoryFilter !== "all" && task.category !== categoryFilter)
+          return false;
 
         return true;
       })
       .sort((a, b) => {
+        if (sortOption === "manual") return 0;
+
         // Primary sort
-        if (sortOption === 'priority') {
+        if (sortOption === "priority") {
           const weightA = PRIORITY_WEIGHT[a.priority];
           const weightB = PRIORITY_WEIGHT[b.priority];
           if (weightA !== weightB) return weightB - weightA;
-        } else if (sortOption === 'dueDate') {
+        } else if (sortOption === "dueDate") {
           if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
           if (a.dueDate) return -1;
           if (b.dueDate) return 1;
-        } else if (sortOption === 'title') {
+        } else if (sortOption === "title") {
           return a.title.localeCompare(b.title);
         }
 
         // Default sort by createdAt descending
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
       });
-  }, [tasks, searchQuery, statusFilter, priorityFilter, categoryFilter, sortOption]);
+  }, [
+    tasks,
+    searchQuery,
+    statusFilter,
+    priorityFilter,
+    categoryFilter,
+    sortOption,
+  ]);
 
-  const todayFormatted = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
+  const todayFormatted = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
   });
 
   return (
@@ -169,7 +233,9 @@ export default function App() {
               <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none">
                 Task Manager
               </h1>
-              <p className="text-[11px] font-medium text-slate-500 mt-0.5">{todayFormatted}</p>
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                {todayFormatted}
+              </p>
             </div>
           </div>
 
@@ -216,6 +282,8 @@ export default function App() {
                   onToggleComplete={handleToggleComplete}
                   onDeleteTask={handleDeleteTask}
                   onUpdateTask={handleUpdateTask}
+                  onDragStart={setDraggedTaskId}
+                  onDrop={handleDropTask}
                 />
               ))
             ) : (
@@ -224,12 +292,14 @@ export default function App() {
                   <ListTodo className="w-6 h-6 stroke-[1.75]" />
                 </div>
                 <h3 className="text-sm font-semibold text-slate-900 mb-1">
-                  {tasks.length === 0 ? 'No tasks yet' : 'No matching tasks found'}
+                  {tasks.length === 0
+                    ? "No tasks yet"
+                    : "No matching tasks found"}
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4 leading-relaxed">
                   {tasks.length === 0
-                    ? 'Get started by creating your first task above to keep track of your priorities.'
-                    : 'Try adjusting your search criteria or resetting filters to view your tasks.'}
+                    ? "Get started by creating your first task above to keep track of your priorities."
+                    : "Try adjusting your search criteria or resetting filters to view your tasks."}
                 </p>
                 {activeFilterCount > 0 && (
                   <button
